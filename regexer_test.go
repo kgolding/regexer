@@ -5,7 +5,6 @@ import (
 	"os"
 	"regexp"
 	"testing"
-	"time"
 )
 
 func Test_Simple(t *testing.T) {
@@ -49,7 +48,6 @@ func Test_Simple2(t *testing.T) {
 	r.Write([]byte(" Match 2"))
 	r.Write([]byte(" Match")) // Break match across writes
 	r.Write([]byte(" 3"))
-	time.Sleep(time.Second)
 	r.Close()
 
 	// Wait for background process to finish
