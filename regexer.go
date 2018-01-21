@@ -8,6 +8,9 @@ import (
 	"regexp"
 )
 
+// Make buffer size in memory (4K)
+const MAX_BUFFER_SIZE = 1024 * 4
+
 type Regexer struct {
 	rxBuf []byte // data buffer
 	regex *regexp.Regexp
@@ -54,5 +57,9 @@ func (r *Regexer) Write(b []byte) (int, error) {
 		}
 	}
 	r.rxBuf = r.rxBuf[lastByteUsed:]
+	// Purge old data
+	if len(r.rxBuf) > MAX_BUFFER_SIZE {
+		r.rxBuf = r.rxBuf[len(r.rxBuf)-MAX_BUFFER_SIZE:]
+	}
 	return len(b), nil
 }
