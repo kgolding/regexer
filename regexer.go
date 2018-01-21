@@ -49,7 +49,7 @@ func (r *Regexer) Write(b []byte) (int, error) {
 	for _, m := range matches {
 		ms := make([][]byte, len(m))
 		for i := 0; i < len(m)-1; i += 2 {
-			ms[i] = r.rxBuf[m[i]:m[i+1]]
+			ms[i/2] = r.rxBuf[m[i]:m[i+1]]
 		}
 		r.C <- ms
 		if lastByteUsed < m[1] {

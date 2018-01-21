@@ -35,7 +35,7 @@ func Test_Simple2(t *testing.T) {
 		// The loop runs until the regexer is closed
 		for m := range r.C {
 			counter++
-			t.Log(BytesToString(m))
+			t.Logf("Match: %#v", BytesToString(m))
 		}
 		if counter != 3 {
 			t.Errorf("Expected 3 matches, got %d", counter)
