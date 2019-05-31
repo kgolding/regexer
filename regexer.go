@@ -7,6 +7,7 @@ package regexer
 import (
 	"errors"
 	"regexp"
+	"time"
 )
 
 // Make buffer size in memory (4K)
@@ -48,18 +49,19 @@ func (r *Regexer) Write(b []byte) (int, error) {
 	matches := r.regex.FindAllSubmatchIndex(r.rxBuf, -1)
 	lastByteUsed := 0
 	var err error
-	for _, m := range matches {
-		ms := make([][]byte, len(m))
-		for i := 0; i < len(m)-1; i += 2 {
-			ms[i/2] = r.rxBuf[m[i]:m[i+1]]
+	for _, match := range matches {
+		retLen := len(match)
+		ret := make([][]byte, retLen/2)
+		for i := 0; i < retLen-1; i += 2 {
+			ret[i/2] = r.rxBuf[match[i]:match[i+1]]
 		}
 		select { // Do not block if chan not being emptied
-		case r.C <- ms:
-		default:
+		case r.C <- ret:
+		case <-time.After(time.Second * 10):
 			err = errors.New("match channel blocked")
 		}
-		if lastByteUsed < m[1] {
-			lastByteUsed = m[1]
+		if lastByteUsed < match[1] {
+			lastByteUsed = match[1]
 		}
 	}
 	r.rxBuf = r.rxBuf[lastByteUsed:]
