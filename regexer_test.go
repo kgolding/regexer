@@ -16,8 +16,13 @@ func Test_Simple(t *testing.T) {
 	r.Write([]byte("Two Words"))
 
 	// Read the two matches (relies on the regexer having a buffered channel
-	t.Log("Match 1:", BytesToString(<-r.C))
-	t.Log("Match 2:", BytesToString(<-r.C))
+	m1 := BytesToString(<-r.C)
+	if len(m1) != 2 {
+		t.Errorf("expected two result got %d", len((m1)))
+	}
+	t.Logf("Match 1 (%d): %s", len(m1), m1)
+	m2 := BytesToString(<-r.C)
+	t.Logf("Match 2 (%d): %s", len(m2), m2)
 
 	r.Close()
 }
@@ -89,9 +94,8 @@ func Test_File(t *testing.T) {
 	<-finished
 }
 
-func Test_LargeData(t *testing.T) {
-	NUM_TESTS := 50000
-	t.Logf("Write 2,010 bytes %d times, a total of %.3f Mb", NUM_TESTS, float32(NUM_TESTS*2010)/1024/1024)
+func LargeDataTest(l testing.TB, num_tests int) {
+	l.Logf("Write 2,010 bytes %d times, a total of %.3f Mb", num_tests, float32(num_tests*2010)/1024/1024)
 	r := NewRegexer(regexp.MustCompile(`(1)`))
 
 	// Create a channel to signal finished
@@ -100,21 +104,26 @@ func Test_LargeData(t *testing.T) {
 	go func() { // Set up process to listen for matches
 		bufTot := 0
 		counter := 0
+		bufMax := 0
 		for range r.C {
 			counter++
-			bufTot += len(r.rxBuf)
+			bufLen := len(r.rxBuf)
+			bufTot += bufLen
+			if bufLen > bufMax {
+				bufMax = bufLen
+			}
 			if len(r.rxBuf) > MAX_BUFFER_SIZE {
-				t.Errorf("Overrun rxBuf at %d bytes", len(r.rxBuf))
+				l.Errorf("Overrun rxBuf at %d bytes", len(r.rxBuf))
 			}
 		}
-		t.Logf("Average rxBuf len was %d after %d writes", bufTot/counter, counter)
-		if counter != NUM_TESTS {
-			t.Errorf("Expected %d matches/words, got %d", NUM_TESTS, counter)
+		l.Logf("Average rxBuf len was %d, max was %d after %d writes", bufTot/counter, bufMax, counter)
+		if counter != num_tests {
+			l.Errorf("Expected %d matches/words, got %d", num_tests, counter)
 		}
 		close(finished)
 	}()
 
-	for i := 0; i < NUM_TESTS; i++ {
+	for i := 0; i < num_tests; i++ {
 		r.Write([]byte(strings.Repeat("TEST TEST ", 100)))                          // 1000 bytes
 		r.Write([]byte{0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39}) // 0-9 - 10 bytes
 		r.Write([]byte(strings.Repeat("TEST TEST ", 100)))                          // 1000 bytes
@@ -124,4 +133,12 @@ func Test_LargeData(t *testing.T) {
 
 	// Wait for background process to finish
 	<-finished
+}
+
+func Test_LargeData(t *testing.T) {
+	LargeDataTest(t, 1)
+}
+
+func BenchmarkLargeData(b *testing.B) {
+	LargeDataTest(b, b.N)
 }
