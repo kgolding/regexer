@@ -51,9 +51,12 @@ func (r *Regexer) Write(b []byte) (int, error) {
 	var err error
 	for _, match := range matches {
 		retLen := len(match)
-		ret := make([][]byte, retLen/2)
+		ret := make([][]byte, 0)
 		for i := 0; i < retLen-1; i += 2 {
-			ret[i/2] = r.rxBuf[match[i]:match[i+1]]
+			// fmt.Printf("i: %d, retLen: %d, match[i]: %d, match: % X\n\n", i, retLen, match[i], match)
+			if match[i] > -1 && match[i+1] > -1 {
+				ret = append(ret, r.rxBuf[match[i]:match[i+1]])
+			}
 		}
 		select { // Do not block if chan not being emptied
 		case r.C <- ret:
