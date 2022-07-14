@@ -112,21 +112,32 @@ func LargeDataTest(l testing.TB, num_tests int) {
 			if bufLen > bufMax {
 				bufMax = bufLen
 			}
-			if len(r.rxBuf) > MAX_BUFFER_SIZE {
+			if len(r.rxBuf) > MAX_BUFFER_SIZE*10 {
 				l.Errorf("Overrun rxBuf at %d bytes", len(r.rxBuf))
 			}
 		}
 		l.Logf("Average rxBuf len was %d, max was %d after %d writes", bufTot/counter, bufMax, counter)
 		if counter != num_tests {
 			l.Errorf("Expected %d matches/words, got %d", num_tests, counter)
+		} else {
+			l.Logf("Expected %d matches/words, got %d :)", num_tests, counter)
 		}
 		close(finished)
 	}()
 
 	for i := 0; i < num_tests; i++ {
-		r.Write([]byte(strings.Repeat("TEST TEST ", 100)))                          // 1000 bytes
-		r.Write([]byte{0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39}) // 0-9 - 10 bytes
-		r.Write([]byte(strings.Repeat("TEST TEST ", 100)))                          // 1000 bytes
+		_, err := r.Write([]byte(strings.Repeat("TEST TEST ", 1000))) // 1000 bytes
+		if err != nil {
+			l.Error(err)
+		}
+		_, err = r.Write([]byte{0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39}) // 0-9 - 10 bytes
+		if err != nil {
+			l.Error(err)
+		}
+		_, err = r.Write([]byte(strings.Repeat("TEST TEST ", 1000))) // 1000 bytes
+		if err != nil {
+			l.Error(err)
+		}
 	}
 
 	r.Close() // Close the regexer C channel
@@ -136,9 +147,25 @@ func LargeDataTest(l testing.TB, num_tests int) {
 }
 
 func Test_LargeData(t *testing.T) {
-	LargeDataTest(t, 1)
+	LargeDataTest(t, 10000)
 }
 
 func BenchmarkLargeData(b *testing.B) {
 	LargeDataTest(b, b.N)
+}
+
+func Test_NullSubGroups(t *testing.T) {
+	// Create a new Regexer using the compiled regexp
+	r := NewRegexer(regexp.MustCompile(`(aaa)(?:(.*))(bbb)`))
+
+	// Write our sample data to the regexer
+	r.Write([]byte("aaabbb"))
+
+	m := BytesToString(<-r.C)
+
+	if len(m) != 4 {
+		t.Errorf("expected 4 elements, got %d", len(m))
+	}
+
+	r.Close()
 }
